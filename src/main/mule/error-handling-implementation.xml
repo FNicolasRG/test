@@ -1,83 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
-http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
-	<flow name="error-handling-implementationFlow" doc:id="6bcea6dd-e398-499a-b47b-24ba3a63c317" >
-		<logger level="INFO" doc:name="Info Logger" doc:id="7bc22fca-3026-4218-b439-c183621c8d7e" message="#[%dw 2.0&#10;&#10;output application/json&#10;&#10;---&#10;&#10;{&#10;&#10;   correlation_id: correlationId default 'Not Defined',&#10;&#10;   client_id: vars.client_id default 'Not Defined',&#10;&#10;   message: &quot;error-handling-implementationFlow started. Creating Service Now ticket.&quot;&#10;&#10;}]"/>
-		<ee:transform doc:name="Set http Status Code" doc:id="90c88191-ebc5-40a6-b388-2fb07c928c19" >
-			<ee:message >
-			</ee:message>
-			<ee:variables >
-				<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
-output application/java
----
-if(error.errorType.identifier == "INVALID_INPUT")("400")
-      else if(error.errorType.identifier == "INVALID_RESPONSE")("400")
-      else if(error.errorType.identifier== "ILLEGAL_BODY")("400")
-      else if(error.errorType.identifier == "NOT_FOUND")("404")
-      else if(error.errorType.identifier == "BAD_REQUEST")("400")
-      else if(error.errorType.identifier == "CONNECTIVITY")("503")
-      else if(error.errorType.identifier == "TIMEOUT")("408")
-      else if(error.errorType.identifier == "DESTINATION_NOT_FOUND")("404")
-      else if(error.errorType.identifier == "RETRY_EXHAUSTED")("408")
-      else if(error.errorType.identifier == "UNAUTHORIZED")("401")
-      else if(error.errorType.identifier == "FORBIDDEN")("403")
-      else if(error.errorType.identifier == "LIMIT_EXCEEDED")("429")
-      else if(error.errorType.identifier == "MUTUAL_AUTHENTICATION_FAILED")("401")
-      else if(error.errorType.identifier == "METHOD_NOT_ALLOWED")("405")
-      else if(error.errorType.identifier == "UNSUPPORTED_MEDIA_TYPE")("415")
-      else if(error.errorType.identifier == "NOT_ACCEPTABLE")("406")
-      else if(error.errorType.identifier == "NOT_IMPLEMENTED")("501")
-      else if(error.errorType.identifier == "GATEWAY_TIMEOUT")("504")
-      else if(error.errorType.identifier == "LAST_PAGE")("204")
-      else if(error.errorType.identifier == "UNKNOWN")("400")
-      else if(error.errorType.identifier == "INVALID")("400")
-      else if(error.errorType.identifier == "FAILURE")("400")
-      else if(error.errorType.identifier == "AUTH")("401")
-      else if(error.errorType.identifier == "MISSINGMANDATORYFIELDS")("400")
-      else if(error.errorType.identifier == "NULL_VALUE")("400")
-      else if(error.errorType.identifier == "EMPTYPAYLOAD")("400")
-      else if(error.errorType.identifier == "NULLORDERID")("400")
-      else if(error.errorType.identifier == "NOMATCHINGCONDITION")("400")
-      //else if(contains(error.detailedDescription as String,"APEX_ERROR")==true) ("500")
-      //else if(contains(error.detailedDescription as String,"MISSING_ARGUMENT")==true) ("400")
-else ("500")]]></ee:set-variable>
-			</ee:variables>
-		</ee:transform>
-		<anypoint-mq:publish doc:name="Publish" doc:id="b38bab3c-c7aa-4ebb-9ca2-7befc1d8834e" destination="${ra-util-error-alerts.anypoint-mq.destination}" config-ref="Error_Handler_Anypoint_MQ_Config">
-			<anypoint-mq:body ><![CDATA[#[%dw 2.0
-output application/json
----
-{
-  "errorDetails": {
-         "appName": app.name,
-         "resourceURI": attributes.requestUri,
-         "httpMethod": attributes.method,
-      	 "flowName": if (error.failingComponent != null) write(error.failingComponent) else (app.name ++ "-" ++ Mule::p('env')),
-         "eventDatetime": now(),
-         "correlationId": correlationId,
-         "source":"eProcurement System",
-         "target":"Hybris OAuth Token",
-         "originalClientId":vars.'client_id',
-         "businessEntity": "authorization",
-		 "businessEntityValue": "token",
-         "environment": Mule::p('env'),
-         "eventType": "ERROR",
-         "errorDescription": if(error.description !=null) error.description else if(vars.customError.errorDetails !=null) write(vars.customError.errorDetails) else "error in" ++ app.name as String,
-         "errorDetailedDescription": if(error.muleMessage.payload != null) error.muleMessage.payload else (if(error.detailedDescription !=null) error.detailedDescription else if(vars.customError.errorDetailedDescription !=null) write(vars.customError.errorDetailedDescription) else "error in" ++ app.name as String),
-         "errorType": error.errorType.identifier,
-         "errorCause": if(error.cause.message != null) error.cause.message else if(vars.customError.errorMessage != null) write(vars.customError.errorMessage) else "error in" ++ app.name as String,
-    },
-    "incidentDetails": {
-          "u_iscritical": if (vars.httpStatus == "401" or vars.httpStatus[0] == "5")("true") else "false",
-          "assignedTo": "AppSIPIntegration – Tier2"    
-  }
-}]]]></anypoint-mq:body>
-		</anypoint-mq:publish>
-		<logger level="INFO" doc:name="Info Logger" doc:id="0ce5ffc8-6873-418b-aa19-794b28d730af" message="#[%dw 2.0&#10;&#10;output application/json&#10;&#10;---&#10;&#10;{&#10;&#10;   correlation_id: correlationId default 'Not Defined',&#10;&#10;   client_id: vars.client_id default 'Not Defined',&#10;&#10;   message: &quot;error-handling-implementationFlow ended. Service Now ticket created with error details:&quot; ++ payload&#10;&#10;}]"/>
-	</flow>
-</mule>
