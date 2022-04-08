@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<sub-flow name="authOrchestratorSub_Flow" doc:id="900f670c-27f0-4423-8630-378eae52821c" >
+		<ee:transform doc:name="Save values From properties" doc:id="76710d45-af46-432a-ad27-f8fab7d9c04e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var bpId = payload.bpId
+var clientId ="secure::ra-eapi-gs-auth-eproc.bpId.$bpId.client_id"
+var clientSecret ="secure::ra-eapi-gs-auth-eproc.bpId.$bpId.client_secret"
+var grantType ="secure::ra-eapi-gs-auth-eproc.bpId.$bpId.grantType"
+---
+{
+	grantType: Mule::p(grantType),
+	clientId: Mule::p(clientId),
+	clientSecret: Mule::p(clientSecret),
+	key: payload.key,
+	sid: payload.sid
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<validation:is-not-null doc:name="Validate Client Id is not null" doc:id="3d463eec-6857-4602-a007-3725b83d6d57" value="#[payload.clientId]" message="Bad Business Partner Id">
+			<error-mapping targetType="APP:UNAUTHORIZED" />
+		</validation:is-not-null>
+		<logger level="DEBUG" doc:name="Logger Client Request Received" doc:id="ebfbe3ee-f992-4289-b3d4-ff6f2036c804" message="#[%dw 2.0&#10;output application/json&#10;---&#10;&quot;Client Request Received &quot;: {&#10;	body: payload,&#10;	headers: {&#10;		&quot;X-Correlation-Id&quot;: correlationId,&#10;		&quot;client_id&quot;: p('auth.client_id')&#10;	},&#10;	queryParam: {},&#10;	uriParam: {},&#10;	correlationId: correlationId,&#10;	client_id: vars.client_id&#10;}]"/>
+		<http:request method="POST" doc:name="POST /auth/token" doc:id="940581c6-2817-4cf8-858a-701edb34f85f" config-ref="HTTP_Request_Process_Auth_configuration" path="/auth/token"/>
+		<logger level="DEBUG" doc:name="Logger Client Request Processed" doc:id="96e9787c-ff3a-4248-923e-4a7a884480c1" message='#[%dw 2.0&#10;output application/json&#10;---&#10;"Client Request Processed": {&#10;	payload: payload,&#10;	correlationId: correlationId,&#10;	client_id: vars.client_id&#10;}]'/>
+		<ee:transform doc:name="Get Access Token" doc:id="8fcec590-06aa-448f-8159-3170b4df9df4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	access_token: payload.access_token
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+</mule>

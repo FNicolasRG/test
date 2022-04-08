@@ -1,0 +1,56 @@
+#%RAML 1.0
+title: Eprocurement experience API to Auth
+version: v1
+baseUri: https://{env}.rockwellautomation.com/api/eapi/{version}
+baseUriParameters:
+  env:   
+    description: Define the Enviroment to connect
+    displayName: Environment
+    enum: [api, api-qa, api-dev]
+    example: api-dev
+protocols: [HTTPS]
+
+documentation:
+  - title: Home
+    content: This is an experience API to Auth
+
+traits:
+  client_credentials_required: !include Search-Trait.raml
+  global-headers: !include Global-Headers.raml
+
+/auth:
+  post:
+    displayName: Authorization
+    description: This Authorization Experience API returns oauth token from Hybris System API
+    is: 
+      - client_credentials_required
+      - global-headers
+    body:
+      application/json:
+        example: !include examples/post-api_auth-request.json
+          
+    responses:
+      200:
+        body:
+          application/json:            
+            example: !include examples/post-api_auth-response.json
+      400:
+        body:
+          application/json:
+            example: !include examples/error-responses/response-example-400.json
+      401:
+        body:
+          application/json:
+            example: !include examples/error-responses/response-example-401.json
+      404:
+        body:
+          application/json:
+            example: !include examples/error-responses/response-example-404.json
+      405:
+        body:
+          application/json:
+            example: !include examples/error-responses/response-example-405.json
+      500:
+        body:
+          application/json:
+            example: !include examples/error-responses/response-example-500.json  

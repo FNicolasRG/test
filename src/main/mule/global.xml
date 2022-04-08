@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq"
+	xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:graphql="http://www.mulesoft.org/schema/mule/graphql"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd  http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd  http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd  http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/graphql http://www.mulesoft.org/schema/mule/graphql/current/mule-graphql.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<apikit:config name="ra-eapi-gs-auth-eproc-config"
+		api="ra-eapi-gs-auth-eproc.raml" outboundHeadersMapName="outboundHeaders"
+		httpStatusVarName="httpStatus" />
+	<api-gateway:autodiscovery apiId="${api.id}"
+		ignoreBasePath="true" doc:name="API Autodiscovery"
+		doc:id="d96c6752-248c-4440-a0f2-7dcc7a3ef90c"
+		flowRef="ra-eapi-gs-auth-eproc-main" />
+	<configuration-properties
+		doc:name="Configuration properties"
+		doc:id="d0eff340-70e1-47b0-a4f9-4aac2879d9f8"
+		file="${env}-properties.yaml" />
+	<http:request-config
+		name="HTTP_Request_Process_Auth_configuration"
+		doc:name="HTTP Request configuration"
+		doc:id="68f589c6-7602-4f6e-b20f-6233e622e5fd"
+		basePath="${auth.basePath}" enableCookies="false"
+		responseTimeout="${auth.response.timeout}">
+		<http:request-connection host="${auth.host}"
+			protocol="HTTPS"
+			clientSocketProperties="Tcp_client_process_auth_socket_properties" />
+		<http:default-headers>
+			<http:default-header key="client_id"
+				value="${auth.client_id}" />
+			<http:default-header key="client_secret"
+				value="${secure::ra-eapi-gs-auth-eproc.auth.client_secret}" />
+		</http:default-headers>
+	</http:request-config>
+	<configuration doc:name="Configuration"
+		doc:id="cb857003-d9e3-41b8-abd7-93edc3aeb7c2"
+		defaultErrorHandler-ref="errorHandler"
+		defaultResponseTimeout="${api.response.timeout}" />
+	<sockets:tcp-client-socket-properties
+		name="Tcp_client_process_auth_socket_properties"
+		doc:name="Tcp client socket properties"
+		doc:id="c908bd05-6095-47c0-b5cd-dcd44fae6030"
+		connectionTimeout="${auth.connection.timeout}"
+		clientTimeout="${auth.response.timeout}" />
+	<anypoint-mq:config name="Error_Handler_Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="43944a66-f6d9-4700-af6e-865ba5c13365" >
+		<anypoint-mq:connection url="${ra-util-error-alerts.anypoint-mq.url}" clientId="${ra-util-error-alerts.anypoint-mq.client-app-id}" clientSecret="${secure::ra-util-error-alerts.anypoint-mq.client-secret}"/>
+	</anypoint-mq:config>
+	<global-property doc:name="Global Property" doc:id="d689f9da-ba0b-41c0-9652-60cc34f86160" name="env" value="vpcdev" />
+	<global-property doc:name="Global Property" doc:id="ca3da31d-7d1c-4aaf-8d93-e6d1621b8eec" name="secure.properties.key" value="mulec4e@ra.com" />
+	<import doc:name="Import" doc:id="0f5f2e69-04d8-4893-bc3d-1d3a68d116af" file="ra-util-secure-properties.xml" />
+	<import doc:name="Import" doc:id="c69bb6de-605a-4c46-b0d8-787634fb092f" file="ra-util-https-mule4x.xml" />
+</mule>

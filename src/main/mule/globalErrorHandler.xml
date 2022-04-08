@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<error-handler name="errorHandler"
+		doc:id="274aca17-d324-4625-a4e5-f2f6f2ff886e">
+		<on-error-propagate enableNotifications="true"
+			logException="true" doc:name="On Error Propagate"
+			doc:id="7e619fac-59bb-4699-b166-de68acd57cdd" type="APP:UNAUTHORIZED">
+			<async doc:name="Async" doc:id="cbe506b8-d9ee-44a8-9405-a35620750c11" >
+				<flow-ref doc:name="Calling to C4E MQ errors" doc:id="7091cc51-f17c-4423-badc-ce23087ce2f2" name="error-handling-implementationFlow"/>
+			</async>
+			<ee:transform doc:name="Set error message"
+				doc:id="0d20f1bd-d4dc-4682-a339-21d4c27d4bbd">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Something went wrong during the request: Unauthorized 401",
+	description: error.description,
+	correlationId: correlationId
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[401]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<logger level="ERROR" doc:name="Log error" doc:id="4afe665b-dc22-4cc6-9645-3d9b18bee9f5" message='#[%dw 2.0&#10;output application/json&#10;---&#10;"Global Error Handler": {&#10;	"errorMapping": payload,&#10;	"payloadErrorMessage": error.errorMessage.payload,&#10;	"correlationId": correlationId,&#10;	"client_id": vars.client_id,&#10;	"description": error.description,&#10;	"detailedDescription": error.detailedDescription,&#10;	"failingComponent": error.failingComponent&#10;}]'/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true"
+			logException="true" doc:name="On Error Propagate"
+			doc:id="5767051e-3ab3-4eba-ba43-668234f06ed8" type="ANY">
+			<async doc:name="Async" doc:id="9f2fd902-3412-480c-83b3-524445ff9cdc" >
+				<flow-ref doc:name="Calling to C4E MQ errors" doc:id="0b2a4e7d-959e-478a-aef3-437a55119c96" name="error-handling-implementationFlow"/>
+			</async>
+			<ee:transform doc:name="Mapping error"
+				doc:id="7c978a27-2bf3-4404-9e70-42fd09af573d">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Strings
+var identify =  capitalize(error.errorType.identifier default "" replace "_" with " ")
+---
+{
+	message: "Something went wrong during the request: " ++ identify ++ " " ++ (error.errorMessage.attributes.statusCode default 500),
+	description: error.errorMessage.payload.description,
+	(details: error.errorMessage.payload.details) if(error.errorMessage.payload.details?),
+	correlationId: correlationId
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="httpStatus"><![CDATA[error.errorMessage.attributes.statusCode default 500]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<logger level="ERROR" doc:name="Log error"
+				doc:id="81a2d635-bb3a-4b7e-bd36-34249e421b0d"
+				message='#[%dw 2.0&#10;output application/json&#10;---&#10;"Global Error Handler": {&#10;	"errorMapping": payload,&#10;	"payloadErrorMessage": error.errorMessage.payload,&#10;	"correlationId": correlationId,&#10;	"client_id": vars.client_id,&#10;	"description": error.description,&#10;	"detailedDescription": error.detailedDescription,&#10;	"failingComponent": error.failingComponent&#10;}]' />
+		</on-error-propagate>
+	</error-handler>
+	<sub-flow name="globalErrorHandlerLogger"
+		doc:id="e2fb0e2e-3162-4e12-aff9-4a542c39e6d9">
+		<logger level="ERROR" doc:name="Global Error Handler Log"
+			doc:id="e02e69b0-6c71-4780-b688-8368de67063a"
+			message='#[%dw 2.0&#10;output application/json&#10;---&#10;"APIKIT Error Handler": {&#10;	"correlationId": correlationId,&#10;	"client_id": vars.client_id,&#10;	"description": error.description,&#10;	"detailedDescription": error.detailedDescription,&#10;	"failingComponent": error.failingComponent&#10;}]' />
+	</sub-flow>
+</mule>
